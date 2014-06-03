@@ -450,6 +450,37 @@ pub enum IoErrorKind {
     NoProgress,
 }
 
+/// A trait that lets you add a `detail` to an IoError easily
+trait UpdateIoError<T> {
+    /// Returns an IoError with updated description and detail
+    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> Self;
+
+    /// Returns an IoError with updated detail
+    fn update_detail(self, detail: |&IoError| -> String) -> Self;
+
+    /// Returns an IoError with update description
+    fn update_desc(self, desc: &'static str) -> Self;
+}
+
+impl<T> UpdateIoError<T> for IoResult<T> {
+    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> IoResult<T> {
+        self.map_err(|mut e| {
+            let detail = detail(&e);
+            e.desc = desc;
+            e.detail = Some(detail);
+            e
+        })
+    }
+
+    fn update_detail(self, detail: |&IoError| -> String) -> IoResult<T> {
+        self.map_err(|mut e| { e.detail = Some(detail(&e)); e })
+    }
+
+    fn update_desc(self, desc: &'static str) -> IoResult<T> {
+        self.map_err(|mut e| { e.desc = desc; e })
+    }
+}
+
 static NO_PROGRESS_LIMIT: uint = 1000;
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
